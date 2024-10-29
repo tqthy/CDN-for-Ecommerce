@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  edge_server_1:
+    build: ./edge-server
+    container_name: edge1
+    ports:
+      - "80:80"
+    volumes:
+      - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
+      - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
+    networks:
+      - my_network
+
+  origin:
+    build: ./origin 
+    container_name: origin
+    expose:
+      - "3000"
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge

@@ -9,7 +9,8 @@ RUN apk add --no-cache build-base pcre pcre-dev zlib zlib-dev openssl openssl-de
     cd nginx-1.27.2 && \
     ./configure --add-module=../nginx-module-vts-0.2.2 && \
     make && make install && \
-    rm -rf /var/cache/apk/* nginx-1.27.2* v0.2.2.zip
+    rm -rf /var/cache/apk/* nginx-1.27.2* v0.2.2.zip && \
+    mkdir -p /var/log/nginx
 
 # Copy the Nginx configuration files
 COPY nginx-edge.conf /usr/local/nginx/conf/nginx.conf
