@@ -22,14 +22,7 @@ export class FileController {
       },
     }),
   }))
-  upload(@UploadedFile(
-    new ParseFilePipe({
-      validators: [
-        new FileTypeValidator({ fileType: 'image/jpeg' }),
-      ],
-    }),
-  )
-  file: Express.Multer.File,) {
+  upload(@UploadedFile() file: Express.Multer.File,) {
     console.log(file);
     return { message: 'File uploaded successfully', filePath: file.path };
   }
@@ -37,6 +30,7 @@ export class FileController {
   @Get(END_POINTS.FILE.DOWNLOAD)
   download(@Param('key') key: string, @Res() res: Response) {
     const filePath = join(__dirname, '..', '..', '..', 'storage', key);
+    res.header('Cache-Control', 'public, max-age=100');
     res.download(filePath);
   }
   
