@@ -1,0 +1,13 @@
+global:
+  scrape_interval:     10s # each 10s prometheus will scrape targets
+  evaluation_interval: 10s
+  scrape_timeout: 2s
+
+  external_labels:
+      monitor: 'CDN'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    metrics_path: '/status/format/prometheus'
+    static_configs:
+      - targets: ['edge1:8081', 'edge2:8080', 'load_balancer_1:80', 'origin:3000'] # the server list to be scrapped by the scrap_path
