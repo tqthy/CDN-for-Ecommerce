@@ -1,16 +1,47 @@
 version: '3.8'
 
+
+
 services:
   edge_server_1:
     build: ./edge-server
     container_name: edge1
     ports:
-      - "80:80"
+      - "8081:80"
     volumes:
       - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
       - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
     networks:
       - my_network
+    depends_on:
+      - origin
+  
+  edge_server_2:
+    build: ./edge-server
+    container_name: edge2
+    ports:
+      - "8082:80"
+    volumes:
+      - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
+      - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
+    networks:
+      - my_network
+    depends_on:
+      - origin
+  
+  load_balancer_1:
+    build: ./load-balancer
+    container_name: lb1
+    ports:
+      - "80:80"
+    volumes:
+      - ./load-balancer/nginx-loadbalancer.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
+      - ./load-balancer/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
+    networks:
+      - my_network
+    depends_on:
+      - edge_server_1
+      - edge_server_2
 
   origin:
     build: ./origin 
@@ -23,3 +54,4 @@ services:
 networks:
   my_network:
     driver: bridge
+
