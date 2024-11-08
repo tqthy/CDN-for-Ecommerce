@@ -6,8 +6,8 @@ services:
   edge_server_1:
     build: ./edge-server
     container_name: edge1
-    ports:
-      - "8081:80"
+    expose:
+      - "80"
     volumes:
       - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
       - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
@@ -19,8 +19,8 @@ services:
   edge_server_2:
     build: ./edge-server
     container_name: edge2
-    ports:
-      - "8082:80"
+    expose:
+      - "80"
     volumes:
       - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
       - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
@@ -50,6 +50,8 @@ services:
       - "3000"
     networks:
       - my_network
+    depends_on:
+      - storage
 
   prometheus:
     image: prom/prometheus
@@ -65,7 +67,7 @@ services:
     image: grafana/grafana
     container_name: grafana
     ports:
-      - "9000:3000"
+      - "3000:3000"
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=admin
@@ -74,6 +76,21 @@ services:
       - ./monitoring/grafana:/etc/grafana/provisioning/datasources
     networks:
       - my_network
+
+  storage:
+    image: minio/minio
+    container_name: storage
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_OPTS: --console-address :9001
+      MINIO_VOLUMES: /mnt/data
+    volumes:
+      - ./storage/data:/mnt/data
+    command: server --console-address ":9001" /data
 
 networks:
   my_network:
