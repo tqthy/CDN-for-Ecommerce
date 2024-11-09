@@ -11,9 +11,10 @@ import { NestMinioModule } from 'nestjs-minio';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         endPoint: configService.get<string>('S3_ENDPOINT'),
+        port: 9000,
         accessKey: configService.get<string>('S3_ACCESS_KEY'),
         secretKey: configService.get<string>('S3_SECRET_KEY'),
-        useSSL: configService.get<boolean>('S3_USE_SSL'),
+        useSSL: (configService.get<string>('S3_USE_SSL') === 'true'), 
       }),  
       inject: [ConfigService],
     })

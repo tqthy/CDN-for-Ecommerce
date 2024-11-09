@@ -80,6 +80,7 @@ services:
   storage:
     image: minio/minio
     container_name: storage
+    hostname: storage
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -88,10 +89,26 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_OPTS: --console-address :9001
       MINIO_VOLUMES: /mnt/data
+      TZ: Asia/Bangkok
     volumes:
       - ./storage/data:/mnt/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     command: server --console-address ":9001" /data
+    networks:
+      - my_network
 
+  client:
+    build: ./cdn-client
+    container_name: client
+    networks:
+      - my_network
+    depends_on:
+      - load_balancer_1
+    expose:
+      - 5173
+    ports:
+      - "5173:5173"
 networks:
   my_network:
     driver: bridge
