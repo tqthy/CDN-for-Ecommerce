@@ -17,14 +17,37 @@ export class FileController {
   async getPreSignedUrl(@Query('contentType') contentType: string) {
     console.log(contentType);
     const res = await this.fileService.generatePreSignedUrl(contentType);
-    // res.presignedUrl = res.presignedUrl.replace('http://storage:9000', 'http://localhost:9000');
     return ResponseObject.create('Pre-signed URL generated', res);
   }
 
   @Get(END_POINTS.FILE.DOWNLOAD)
-  download() {
-    return this.fileService.get("key");
+  async download(@Param('key') key: string, @Res() res: Response) {
+    const filePath = join(__dirname, '..', '..', '..', 'storage', key);
+    res.header('Cache-Control', 'public, max-age=100');
+    await this.fileService.get(key, filePath);
+    
+    res.download(filePath);
+    // try {
+    //   const { dataStream, size } = await this.fileService.get(key);
+
+    //   res.set({
+    //     'Content-Type': 'application/octet-stream',
+    //     'Content-Disposition': `attachment; filename="${key}"`,
+    //     'Content-Length': size, 
+    //   });
+
+    //   dataStream.pipe(res);
+
+    //   dataStream.on('error', (err) => {
+    //     console.error('Error streaming file:', err);
+    //     res.status(500).send('Error retrieving file');
+    //   });
+    // } catch (error) {
+    //   console.error('Error fetching object:', error);
+    //   res.status(500).send('Error fetching object');
+    // }
   }
+}
   
   // @Post(END_POINTS.FILE.UPLOAD)
   // @UseInterceptors(FileInterceptor('file', {
@@ -49,4 +72,4 @@ export class FileController {
   // }
 
 
-}
+

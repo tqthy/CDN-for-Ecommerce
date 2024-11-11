@@ -97,18 +97,6 @@ services:
     command: server --console-address ":9001" /data
     networks:
       - my_network
-
-  client:
-    build: ./cdn-client
-    container_name: client
-    networks:
-      - my_network
-    depends_on:
-      - load_balancer_1
-    expose:
-      - 5173
-    ports:
-      - "5173:5173"
 networks:
   my_network:
     driver: bridge
