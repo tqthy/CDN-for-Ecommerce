@@ -23,7 +23,7 @@ export class FileService {
       fileName, 
       24 * 60 * 60, 
       { 
-        'x-amz-meta-cache-control': '100',
+        'x-amz-meta-cache-max-age': '10',
         'Content-Type': contentType,
       });
     return { presignedUrl, fileName };

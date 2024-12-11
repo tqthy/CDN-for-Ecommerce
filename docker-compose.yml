@@ -89,6 +89,8 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_OPTS: --console-address :9001
       MINIO_VOLUMES: /mnt/data
+      MINIO_NOTIFY_WEBHOOK_ENABLE_PRIMARY: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_PRIMARY: "http://origin:3000/api/minio/notify"
       TZ: Asia/Bangkok
     volumes:
       - ./storage/data:/mnt/data

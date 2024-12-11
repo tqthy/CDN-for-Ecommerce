@@ -22,7 +22,7 @@ export class FileController {
     
     const object = await this.fileService.get(key, filePath);
     console.log(object);
-    res.header('CDN-Cache-Control', `public, max-age=${object.metaData['cache-control']}`);
+    res.header('CDN-Cache-Control', `public, max-age=${object.metaData['cache-max-age']}`);
   
 
     res.download(filePath);
