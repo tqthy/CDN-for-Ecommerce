@@ -19,9 +19,12 @@ export class FileController {
   @Get(END_POINTS.FILE.DOWNLOAD)
   async download(@Param('key') key: string, @Res() res: Response) {
     const filePath = join(__dirname, '..', '..', '..', 'storage', key);
-    res.header('CDN-Cache-Control', 'public, max-age=100');
-    await this.fileService.get(key, filePath);
     
+    const object = await this.fileService.get(key, filePath);
+    console.log(object);
+    res.header('CDN-Cache-Control', `public, max-age=${object.metaData['cache-control']}`);
+  
+
     res.download(filePath);
   }
 }
