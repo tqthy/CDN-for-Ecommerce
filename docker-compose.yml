@@ -11,6 +11,10 @@ services:
     volumes:
       - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
       - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
+    environment:
+      - REDIS_HOST=redis_channel
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=cache-updates
     networks:
       - my_network
     depends_on:
@@ -24,6 +28,10 @@ services:
     volumes:
       - ./edge-server/nginx-edge.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
       - ./edge-server/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
+    environment:
+      - REDIS_HOST=redis_channel
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=cache-updates
     networks:
       - my_network
     depends_on:
@@ -42,16 +50,27 @@ services:
     depends_on:
       - edge_server_1
       - edge_server_2
-
+  redis_channel:
+    image: redis:alpine
+    container_name: redis_channel
+    ports:
+      - "6379:6379"
+    networks:
+      - my_network
   origin:
     build: ./origin 
     container_name: origin
+    environment:
+      - REDIS_HOST=redis_channel
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=cache-updates
     expose:
       - "3000"
     networks:
       - my_network
     depends_on:
       - storage
+      - redis_channel
 
   prometheus:
     image: prom/prometheus
