@@ -1,6 +1,25 @@
 local redis = require "resty.redis"
-
 local _M = {}
+
+local cjson = require "cjson"
+local function cache_file(bucket, key)
+    if not bucket or not key then
+        ngx.log(ngx.ERR, "Invalid bucket or key: ", bucket, ", ", key)
+        return
+    end
+
+    -- Construct internal request URL
+    local internal_url = "/internal-cache?bucket=" .. bucket .. "&key=" .. key
+    ngx.log(ngx.INFO, "Triggering internal caching request: ", internal_url)
+
+    -- Make a subrequest (this triggers the internal location)
+    local res = ngx.location.capture(internal_url, { method = ngx.HTTP_GET })
+    if res.status == ngx.HTTP_OK then
+        ngx.log(ngx.INFO, "Internal caching successful for: ", key)
+    else
+        ngx.log(ngx.ERR, "Internal caching failed for: ", key, ", Status: ", res.status)
+    end
+end
 
 function _M.start()
     ngx.timer.at(0, function()
@@ -10,8 +29,8 @@ function _M.start()
         red:set_timeout(60000) -- Set timeout to 60 seconds
 
         ngx.log(ngx.INFO, "Connecting to Redis...")
-
-        local ok, err = red:connect("redis_channel", 6379)
+        
+        local ok, err = red:connect("redis_channel", "6379")
         if not ok then
             ngx.log(ngx.ERR, "Failed to connect to Redis: ", err)
             return
@@ -35,7 +54,7 @@ function _M.start()
                 -- Optionally reconnect on timeout
                 if err == "timeout" then
                     ngx.log(ngx.INFO, "Reconnecting to Redis...")
-                    local reconnect_ok, reconnect_err = red:connect("redis_channel", 6379)
+                    local reconnect_ok, reconnect_err = red:connect("redis_channel", "6379")
                     if not reconnect_ok then
                         ngx.log(ngx.ERR, "Reconnection failed: ", reconnect_err)
                         break
@@ -44,12 +63,23 @@ function _M.start()
                     break
                 end
             else
-                local cjson = require "cjson"
-                if type(msg) == "table" then
-                    ngx.log(ngx.INFO, "Message received: ", cjson.encode(msg))
+                if type(msg) == "table" and msg[1] == "message" then
+                    local success, parsed_msg = pcall(cjson.decode, msg[3])
+                    if success and parsed_msg then
+                        local cdn_tasks = ngx.shared.cdn_tasks
+                        local task = cjson.encode({
+                            bucket = parsed_msg.bucketName,
+                            key = parsed_msg.objectKey
+                        })
+                        cdn_tasks:lpush("tasks", task)
+                        ngx.log(ngx.INFO, "Task enqueued: ", task)
+                    else
+                        ngx.log(ngx.ERR, "Failed to parse message: ", tostring(msg[3]))
+                    end
                 else
-                    ngx.log(ngx.INFO, "Message received: ", tostring(msg))
+                    ngx.log(ngx.ERR, "Unexpected message format: ", tostring(msg))
                 end
+
             end
         end
     end)
