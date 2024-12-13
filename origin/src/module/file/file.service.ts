@@ -6,6 +6,8 @@ import { Client } from 'minio';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { GetObjectOpts } from 'minio/dist/main/internal/type';
+import { Readable } from 'stream';
+import * as fs from 'fs';
 
 @Injectable()
 export class FileService {
@@ -29,20 +31,37 @@ export class FileService {
     return { presignedUrl, fileName };
   }
 
-  async get(key: string, path: string) {
+  async get(key: string, filePath: string) {
     const bucketName = this.configService.get<string>('S3_BUCKET_NAME');
     try {
       const metadata = await this.minioClient.statObject(bucketName, key);
 
-      await this.minioClient.fGetObject(bucketName, key, path);
-
+      const objectStream: Readable = await this.minioClient.getObject(bucketName, key);
+  
+      const writableStream = fs.createWriteStream(filePath);
+  
+      await new Promise<void>((resolve, reject) => {
+        objectStream.pipe(writableStream);
+  
+        writableStream.on('finish', () => {
+          console.log(`File saved successfully to ${filePath}`);
+          resolve();
+        });
+        objectStream.on('error', (err) => {
+          console.error('Error while reading the object stream:', err);
+          reject(err);
+        });
+        writableStream.on('error', (err) => {
+          console.error('Error while writing the file stream:', err);
+          reject(err);
+        });
+      });
+  
       return metadata;
     } catch (error) {
       console.error('Error fetching object:', error);
       throw new Error(error.message);
     }
-  ;
-    
   }
 
   upload(createFileDto: CreateFileDto) {
