@@ -1,88 +1,81 @@
 local redis = require "resty.redis"
+local lock = require "resty.lock"
+local cjson = require "cjson"
+
 local _M = {}
 
-local cjson = require "cjson"
-local function cache_file(bucket, key)
-    if not bucket or not key then
-        ngx.log(ngx.ERR, "Invalid bucket or key: ", bucket, ", ", key)
+local function redis_subscription()
+    ngx.log(ngx.INFO, "Starting Redis subscription...")
+
+    -- Acquire a lock to ensure only one worker runs the subscription
+    local task_lock = lock:new("cdn_tasks")
+    local elapsed, err = task_lock:lock("redis_subscription_lock")
+    if not elapsed then
+        ngx.log(ngx.ERR, "Failed to acquire Redis subscription lock: ", err)
         return
     end
 
-    -- Construct internal request URL
-    local internal_url = "/internal-cache?bucket=" .. bucket .. "&key=" .. key
-    ngx.log(ngx.INFO, "Triggering internal caching request: ", internal_url)
+    local red = redis:new()
+    red:set_timeout(60000) -- Set timeout to 60 seconds
 
-    -- Make a subrequest (this triggers the internal location)
-    local res = ngx.location.capture(internal_url, { method = ngx.HTTP_GET })
-    if res.status == ngx.HTTP_OK then
-        ngx.log(ngx.INFO, "Internal caching successful for: ", key)
-    else
-        ngx.log(ngx.ERR, "Internal caching failed for: ", key, ", Status: ", res.status)
+    ngx.log(ngx.INFO, "Connecting to Redis...")
+    local ok, err = red:connect("redis_channel", 6379)
+    if not ok then
+        ngx.log(ngx.ERR, "Failed to connect to Redis: ", err)
+        task_lock:unlock()
+        ngx.timer.at(5, redis_subscription) -- Retry after 5 seconds
+        return
     end
+
+    ngx.log(ngx.INFO, "Connected to Redis")
+    local res, err = red:subscribe("cache-updates")
+    if not res then
+        ngx.log(ngx.ERR, "Failed to subscribe to channel: ", err)
+        task_lock:unlock()
+        ngx.timer.at(5, redis_subscription) -- Retry after 5 seconds
+        return
+    end
+
+    ngx.log(ngx.INFO, "Subscribed to Redis channel: cache-updates")
+
+    while true do
+        local msg, err = red:read_reply() -- Blocking read
+        if not msg then
+            ngx.log(ngx.ERR, "Failed to read message: ", err)
+            if err == "timeout" then
+                ngx.log(ngx.INFO, "Timeout waiting for message; continuing to wait...")
+            else
+                break -- Exit the loop on critical errors
+            end
+        else
+            if type(msg) == "table" and msg[1] == "message" then
+                local success, parsed_msg = pcall(cjson.decode, msg[3])
+                if success and parsed_msg then
+                    local cdn_tasks = ngx.shared.cdn_tasks
+                    local task = cjson.encode({
+                        bucket = parsed_msg.bucketName,
+                        key = parsed_msg.objectKey
+                    })
+                    cdn_tasks:lpush("tasks", task)
+                    ngx.log(ngx.INFO, "Task enqueued: ", task)
+                else
+                    ngx.log(ngx.ERR, "Failed to parse message: ", tostring(msg[3]))
+                end
+            else
+                ngx.log(ngx.ERR, "Unexpected message format: ", tostring(msg))
+            end
+        end
+    end
+
+    task_lock:unlock()
+    ngx.log(ngx.INFO, "Redis subscription lock released.")
+
+    -- Re-schedule the timer for another attempt
+    ngx.timer.at(5, redis_subscription)
 end
 
 function _M.start()
-    ngx.timer.at(0, function()
-        ngx.log(ngx.INFO, "Starting Redis subscription...")
-
-        local red = redis:new()
-        red:set_timeout(60000) -- Set timeout to 60 seconds
-
-        ngx.log(ngx.INFO, "Connecting to Redis...")
-        
-        local ok, err = red:connect("redis_channel", "6379")
-        if not ok then
-            ngx.log(ngx.ERR, "Failed to connect to Redis: ", err)
-            return
-        end
-
-        ngx.log(ngx.INFO, "Connected to Redis")
-        ngx.log(ngx.INFO, "Subscribing to channel: cache-updates")
-
-        local res, err = red:subscribe("cache-updates")
-        if not res then
-            ngx.log(ngx.ERR, "Failed to subscribe to channel: ", err)
-            return
-        end
-
-        ngx.log(ngx.INFO, "Subscribed to Redis channel: cache-updates")
-
-        while true do
-            local msg, err = red:read_reply() -- Blocking read
-            if not msg then
-                ngx.log(ngx.ERR, "Failed to read message: ", err)
-                -- Optionally reconnect on timeout
-                if err == "timeout" then
-                    ngx.log(ngx.INFO, "Reconnecting to Redis...")
-                    local reconnect_ok, reconnect_err = red:connect("redis_channel", "6379")
-                    if not reconnect_ok then
-                        ngx.log(ngx.ERR, "Reconnection failed: ", reconnect_err)
-                        break
-                    end
-                else
-                    break
-                end
-            else
-                if type(msg) == "table" and msg[1] == "message" then
-                    local success, parsed_msg = pcall(cjson.decode, msg[3])
-                    if success and parsed_msg then
-                        local cdn_tasks = ngx.shared.cdn_tasks
-                        local task = cjson.encode({
-                            bucket = parsed_msg.bucketName,
-                            key = parsed_msg.objectKey
-                        })
-                        cdn_tasks:lpush("tasks", task)
-                        ngx.log(ngx.INFO, "Task enqueued: ", task)
-                    else
-                        ngx.log(ngx.ERR, "Failed to parse message: ", tostring(msg[3]))
-                    end
-                else
-                    ngx.log(ngx.ERR, "Unexpected message format: ", tostring(msg))
-                end
-
-            end
-        end
-    end)
+    ngx.timer.at(0, redis_subscription) -- Start immediately
 end
 
 return _M
