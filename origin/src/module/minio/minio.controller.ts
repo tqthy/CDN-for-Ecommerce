@@ -22,7 +22,7 @@ export class MinioController {
         const eventTime = record.eventTime;
         
         console.log(`Event: ${eventName}, Bucket: ${bucketName}, Key: ${objectKey}, Time: ${eventTime}`);
-        const message = JSON.stringify({ bucketName, objectKey, eventName, eventTime });
+        const message = JSON.stringify({ action: 'download', bucketName, objectKey, eventName, eventTime });
         this.redisService.publish(this.configService.get<string>('REDIS_CHANNEL'), message);
       });
       

@@ -52,12 +52,24 @@ local function redis_subscription()
                 local success, parsed_msg = pcall(cjson.decode, msg[3])
                 if success and parsed_msg then
                     local cdn_tasks = ngx.shared.cdn_tasks
-                    local task = cjson.encode({
-                        bucket = parsed_msg.bucketName,
-                        key = parsed_msg.objectKey
-                    })
-                    cdn_tasks:lpush("tasks", task)
-                    ngx.log(ngx.INFO, "Task enqueued: ", task)
+                    if parsed_msg.action == "download" then
+                        local task = cjson.encode({
+                            bucket = parsed_msg.bucketName,
+                            key = parsed_msg.objectKey
+                        })
+                        cdn_tasks:lpush("tasks", task)
+                        ngx.log(ngx.INFO, "Download task enqueued: ", task)
+                    else 
+                        if parsed_msg.action == "purge" then
+                            local task = cjson.encode({
+                                key = parsed_msg.key
+                            })
+                            cdn_tasks:lpush("tasks", task)
+                            ngx.log(ngx.INFO, "Purge task enqueued: ", task)
+                        else
+                            ngx.log(ngx.ERR, "Unknown action: ", parsed_msg.action)
+                        end
+                    end
                 else
                     ngx.log(ngx.ERR, "Failed to parse message: ", tostring(msg[3]))
                 end
