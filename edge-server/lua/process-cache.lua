@@ -24,11 +24,15 @@ process_cache.start = function ()
             local url = "/purge/" .. data.key
             ngx.log(ngx.INFO, "Processing purge for: ", url)
 
-            local res = ngx.location.capture(url, { method = ngx.HTTP_POST })
+            local res = ngx.location.capture(url, {
+              method = ngx.HTTP_POST,
+            })
             if res.status == ngx.HTTP_OK then
                 ngx.log(ngx.INFO, "File purged successfully: ", data.key)
             else
                 ngx.log(ngx.ERR, "Failed to purge file: ", data.key)
+                ngx.log(ngx.ERR, "Status: ", res.status)
+                ngx.log(ngx.ERR, "Body: ", res.body)
             end
           end
       else

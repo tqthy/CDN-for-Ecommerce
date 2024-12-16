@@ -50,13 +50,20 @@ RUN apk add --no-cache build-base pcre pcre-dev zlib zlib-dev openssl openssl-de
     rm -rf /var/cache/apk/* nginx-1.27.2* v0.2.2.zip njs && \
     mkdir -p /var/log/nginx
 
+
+RUN apk add --no-cache iproute2 && \
+    rm -rf /var/cache/apk/*
+
 # Copy the NGINX configuration files
 COPY nginx-loadbalancer.conf /usr/local/nginx/conf/nginx.conf
 COPY generic_conf /usr/local/nginx/conf/generic_conf
 COPY njs /usr/local/nginx/conf/njs
-
-# Expose HTTP port
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 EXPOSE 80
+# Run the combined start script
+CMD ["/bin/sh", "/start.sh"]
+
 
 # Run NGINX
-CMD ["/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]
+# CMD ["/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]

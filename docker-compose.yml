@@ -45,6 +45,8 @@ services:
     volumes:
       - ./load-balancer/nginx-loadbalancer.conf:/etc/nginx/nginx.conf  # Mount nginx configuration
       - ./load-balancer/generic_conf:/etc/nginx/generic_conf   # Mount generic config folder
+    cap_add:
+      - NET_ADMIN
     networks:
       - my_network
     depends_on:
