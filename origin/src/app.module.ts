@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { SharedModule } from './module/shared.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { NestMinioModule } from 'nestjs-minio';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
@@ -17,6 +18,12 @@ import { NestMinioModule } from 'nestjs-minio';
         useSSL: (configService.get<string>('S3_USE_SSL') === 'true'), 
       }),  
       inject: [ConfigService],
+    }),
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
     })
   ]  
 })
