@@ -6,4 +6,4 @@ echo "Applying traffic control settings..."
 
 # Start nginx
 echo "Starting nginx..."
-/usr/local/nginx/sbin/nginx -g 'daemon off;' 
+/usr/local/openresty/bin/openresty -g 'daemon off;'
