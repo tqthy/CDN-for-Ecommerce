@@ -8,6 +8,20 @@ global:
 
 scrape_configs:
   - job_name: 'prometheus'
-    metrics_path: '/metrics'
+    metrics_path: '/status/format/prometheus'
     static_configs:
-      - targets: ['edge1:80', 'edge2:80', 'load_balancer_1:80', 'origin:3000'] # the server list to be scrapped by the scrap_path
+      - targets: ['edge1:80', 'edge2:80', 'load_balancer_1:80'] # the server list to be scrapped by the scrap_path
+  - job_name: 'origin'
+    metrics_path: '/metrics' # Override metrics path for origin
+    static_configs:
+      - targets: ['origin:3000']
+  - job_name: minio-job
+    scrape_interval: 60s
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoiZ3NwQktuMjVIMFF3SmZ5TG9nU1QiLCJleHAiOjQ4ODg1MjUyODJ9._XwnPdl-flFOTFdYZYFAhy5anTSnLNXiby8T9doJYs8roGlTSMjIldv558JKYaX1lhCmTBjm3lgrQXl8ZmtdkQ
+    metrics_path: /minio/v2/metrics/cluster
+    scheme: http
+    static_configs:
+    - targets: ['storage:9000']
+
+rule_files:
+  - /etc/prometheus/rules.yml

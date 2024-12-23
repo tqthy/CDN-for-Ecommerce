@@ -7,5 +7,9 @@ export const END_POINTS = {
     DELETE: '/delete/:key',
     PURGE: '/purge/:key',
   },
+  MINIO: {
+    BASE: "/api/minio",
+    NOTIFY_URL: "/notify"
+  }
 
 }

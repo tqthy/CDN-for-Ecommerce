@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { SharedModule } from './module/shared.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { NestMinioModule } from 'nestjs-minio';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { HttpMetricsMiddleware } from './middleware/http-metrics.middleware';
 
 @Module({
   imports: [
@@ -27,4 +28,10 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     })
   ]  
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(HttpMetricsMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

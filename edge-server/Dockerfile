@@ -110,6 +110,7 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-stream_ssl_preread_module \
     --with-threads \
     --add-module=/tmp/ngx_cache_purge \
+    --add-module=/tmp/nginx-module-vts-0.2.2 \
     "
 ARG RESTY_CONFIG_OPTIONS_MORE=""
 ARG RESTY_LUAJIT_OPTIONS="--with-luajit-xcflags='-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'"
@@ -149,6 +150,11 @@ LABEL resty_luajit_options="${RESTY_LUAJIT_OPTIONS}"
 LABEL resty_pcre_options="${RESTY_PCRE_OPTIONS}"
 
 ENV CACHE_PURGE_REPO=https://github.com/nginx-modules/ngx_cache_purge.git
+
+RUN wget -O nginx-module-vts-0.2.2.zip https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v0.2.2.zip \
+    && unzip nginx-module-vts-0.2.2.zip \
+    && mv nginx-module-vts-0.2.2 /tmp/nginx-module-vts-0.2.2 \
+    && rm nginx-module-vts-0.2.2.zip
 
 RUN apk add --no-cache --virtual .build-deps \
         build-base \
