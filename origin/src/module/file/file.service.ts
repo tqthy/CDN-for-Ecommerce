@@ -15,8 +15,7 @@ export class FileService {
     @Inject(MINIO_CONNECTION) private readonly minioClient: Client,
     private readonly configService: ConfigService) {}
 
-  async generatePreSignedUrl(contentType: string) {
-    const fileName = `${randomUUID()}.${contentType.split('/')[1]}`;
+  async generatePreSignedUrl(contentType: string, fileName: string) {
     const bucketName = this.configService.get<string>('S3_BUCKET_NAME');
     
     // const presignedUrl = await this.minioClient.presignedPutObject(bucketName, fileName);
@@ -34,18 +33,16 @@ export class FileService {
   async get(key: string, filePath: string) {
     const bucketName = this.configService.get<string>('S3_BUCKET_NAME');
     try {
-      const metadata = await this.minioClient.statObject(bucketName, key);
-
       const objectStream: Readable = await this.minioClient.getObject(bucketName, key);
   
       const writableStream = fs.createWriteStream(filePath);
   
-      await new Promise<void>((resolve, reject) => {
+      return new Promise<string>((resolve, reject) => {
         objectStream.pipe(writableStream);
   
         writableStream.on('finish', () => {
           console.log(`File saved successfully to ${filePath}`);
-          resolve();
+          resolve(filePath);
         });
         objectStream.on('error', (err) => {
           console.error('Error while reading the object stream:', err);
@@ -57,11 +54,15 @@ export class FileService {
         });
       });
   
-      return metadata;
     } catch (error) {
       console.error('Error fetching object:', error);
       throw new Error(error.message);
     }
+  }
+
+  async getMetadata(key: string) {
+    const bucketName = this.configService.get<string>('S3_BUCKET_NAME');
+    return this.minioClient.statObject(bucketName, key);
   }
 
   upload(createFileDto: CreateFileDto) {
