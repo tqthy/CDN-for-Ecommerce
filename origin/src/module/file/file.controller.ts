@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Res, Query, Post, HttpException } from '@nestjs/common';
+import { Controller, Get, Param, Res, Query, Post, HttpException, Req } from '@nestjs/common';
 import { FileService } from './file.service';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { END_POINTS } from 'src/utils/endPoints';
 import { join } from 'path';
 import * as fs from 'fs';
@@ -102,8 +102,13 @@ export class FileController {
   }
 
   @Post(END_POINTS.FILE.PURGE)
-  async purge(@Param('key') key: string) {
-    await this.redisService.publish(this.configService.get<string>('REDIS_CHANNEL'), JSON.stringify({ action: 'purge', key }));
+  async purge(@Param('key') key: string, @Req() req: Request) {
+    const fullKey = req.originalUrl.split(`purge/`)[1];
+    console.log('Full key:', fullKey);
+    if (!fullKey) {
+      return new HttpException('Invalid key', 400);
+    }
+    await this.redisService.publish(this.configService.get<string>('REDIS_CHANNEL'), JSON.stringify({ action: 'purge', key: fullKey }));
     return ResponseObject.create('Purge request sent');
   }
 }
