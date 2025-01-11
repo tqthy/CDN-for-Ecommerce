@@ -1,0 +1,1 @@
+wrk -c10 -t2 -d60s -s ./load_tests.lua --latency http://localhost:80
